@@ -1,0 +1,5 @@
+---
+- hosts: localhost
+  connection: all
+  roles:
+          - webapp

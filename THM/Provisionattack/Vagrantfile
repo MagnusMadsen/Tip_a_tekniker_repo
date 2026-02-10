@@ -1,0 +1,48 @@
+Vagrant.configure("2") do |config|
+  # DB server will be the backend for our website
+  config.vm.define "dbserver"  do |cfg|
+    # Configure the local network for the server
+    cfg.vm.network :private_network, type: "dhcp", docker_network__internal: true
+    cfg.vm.network :private_network, ip: "172.20.128.3", netmask: "24"
+
+    # Boot the Docker container and run Ansible
+    cfg.vm.provider "docker" do |d|
+      d.image = "mysql_vuln"
+      d.env = {
+        "MYSQL_ROOT_PASSWORD" => "mysecretpasswd"
+      }
+    end
+  end
+
+
+  # Webserver will be used to host our website
+  config.vm.define "webserver"  do |cfg|
+    # Configure the local network for the server
+    cfg.vm.network :private_network, type: "dhcp", docker_network__internal: true
+    cfg.vm.network :private_network, ip: "172.20.128.2", netmask: "24"
+
+    # Link the shared folder with the hypervisor to allow data passthrough. Will remove later to harden
+    cfg.vm.synced_folder "./provision", "/tmp/provision"
+    cfg.vm.synced_folder "/home/ubuntu/", "/tmp/datacopy"
+
+    # Boot the Docker container and run Ansible
+    cfg.vm.provider "docker" do |d|
+      d.image = "ansible"
+
+      #d.cmd = ["ansible-playbook", "/tmp/provision/web-playbook.yml"]
+      d.has_ssh = true
+
+      # Command will keep the container active
+      d.cmd = ["/usr/sbin/sshd", "-D"]
+    end
+
+    #We will connect using SSH so override the defaults here
+    cfg.ssh.username = 'root'
+    cfg.ssh.private_key_path = "/home/ubuntu/iac/keys/id_rsa"
+
+    #Provision this machine using Ansible 
+    cfg.vm.provision "shell", inline: "ansible-playbook /tmp/provision/web-playbook.yml"
+  end
+
+end
+
