@@ -11,6 +11,6 @@ ip = sys.argv[1]
 client = ModbusClient(ip, port=502)
 client.connect()
 while True:
-    rr = client.read_holding_registers(0, 16)
+    rr = client.read__registers(0, 16)
     print(rr.registers)
     time.sleep(1)
