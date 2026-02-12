@@ -1,0 +1,26 @@
+- name: Create temp folder for SQL scripts
+  ansible.builtin.file:
+    path: /tmp/sql
+    state: directory
+    
+- name: Time delay to allow SQL server to boot
+  shell: sleep 10
+
+- name: Copy DB creation script with injected variables
+  template:
+    src: templates/createdb.sql
+    dest: /tmp/sql/createdb.sql
+
+- name: Copy DB SP script with injected variables
+  template:
+    src: templates/createsp.sql
+    dest: /tmp/sql/createsp.sql   
+    
+- name: Create DB
+  shell: mysql -u {{ db_user }} -p{{ db_password }} -h {{ db_host }} < /tmp/sql/createdb.sql
+  
+- name: Create Stored Procedures
+  shell: mysql -u {{ db_user }} -p{{ db_password }} -h {{ db_host }} < /tmp/sql/createsp.sql
+  
+#- name: Cleanup Scripts
+#  shell: rm -r /tmp/sql

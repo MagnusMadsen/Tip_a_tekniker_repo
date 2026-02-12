@@ -1,0 +1,10 @@
+- name: Copy web application files
+  shell: cp -r /tmp/provision/roles/webapp/templates/app /
+
+- name: Add SSH key for DB status check. This is our vagrant deployment key
+  shell: cp /tmp/provision/roles/webapp/vars/new_keys/id_rsa /root/.ssh/ && chmod 600 /root/.ssh/id_rsa
+
+- name: Copy Flask app script with injected variables
+  template:
+    src: templates/app.py
+    dest: /app/app.py

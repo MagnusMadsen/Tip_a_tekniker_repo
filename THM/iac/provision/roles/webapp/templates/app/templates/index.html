@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-100">
+  <head>
+    <meta charset="UTF-8" />
+    <link
+      rel="icon"
+      type="image/png"
+      href="https://assets.tryhackme.com/img/favicon.png"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Python Flask Bucket List App - Sign In</title>
+    <link rel="stylesheet" href="../static/style.css" />
+  </head>
+  <body class="h-full">
+    <div class="min-h-full">
+      <nav class="bg-thm-800">
+        <div class="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
+          <div class="relative flex h-16 items-center justify-between">
+            <div class="absolute inset-y-0 left-0 flex items-center sm:hidden">
+              <!-- Mobile menu button-->
+              <button
+                type="button"
+                class="relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:bg-thm-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white"
+                aria-controls="mobile-menu"
+                aria-expanded="false"
+                id="mobile-menu-button"
+              >
+                <span class="absolute -inset-0.5"></span>
+                <span class="sr-only">Open main menu</span>
+                <!--
+                Icon when menu is closed.
+              -->
+                <svg
+                  class="block h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                  />
+                </svg>
+                <!--
+                Icon when menu is open.
+              -->
+                <svg
+                  class="hidden h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke-width="1.5"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div
+              class="flex flex-1 items-center justify-center sm:items-stretch sm:justify-start"
+            >
+              <div class="flex flex-shrink-0 items-center">
+                <img
+                  class="h-8 w-auto"
+                  src="../static/tryhackme-logo.svg"
+                  alt="Your Company"
+                />
+              </div>
+              <div class="hidden sm:mx-auto sm:pr-20 sm:block">
+                <div class="flex space-x-4">
+                  <a
+                    href="/"
+                    class="bg-thm-900 text-white rounded-md px-3 py-2 text-sm font-medium"
+                    aria-current="page"
+                    >Home</a
+                  >
+                  <a
+                    href="/signup"
+                    class="text-gray-300 hover:bg-thm-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium"
+                    >Sign Up</a
+                  >
+                  <a
+                    href="/signin"
+                    class="text-gray-300 hover:bg-thm-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium"
+                    >Sign In</a
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile menu, show/hide based on menu state. -->
+        <div class="hidden" id="mobile-menu">
+          <div class="space-y-1 px-2 pb-3 pt-2">
+            <!-- Current: "bg-thm-900 text-white", Default: "text-gray-300 hover:bg-thm-700 hover:text-white" -->
+            <a
+              href="/"
+              class="bg-thm-900 text-white block rounded-md px-3 py-2 text-base font-medium"
+              aria-current="page"
+              >Home</a
+            >
+            <a
+              href="/signup"
+              class="text-gray-300 hover:bg-thm-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium"
+              >Sign Up</a
+            >
+            <a
+              href="/signin"
+              class="text-gray-300 hover:bg-thm-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium"
+              >Sign In</a
+            >
+          </div>
+        </div>
+      </nav>
+      <main
+        class="max-h-[calc(100vh-4rem)] overflow-auto max-w-5xl mx-auto px-4"
+      >
+        <div class="mx-auto max-w-7xl py-6 sm:px-6 lg:px-8">
+          <div class="bg-thm-900/100 rounded-md mb-4 p-5">
+            <div class="flex flex-col items-center py-5">
+              <h1 class="font-medium text-4xl text-gray-100">
+                Bucket List App
+              </h1>
+              <a class="button-primary mt-3" href="signup" role="button"
+                >Sign up today</a
+              >
+            </div>
+          </div>
+          <ul class="divide-y divide-gray-200">
+            <li class="py-4">
+              <h4 class="text-lg text-gray-900">Acquire Knowledge</h4>
+              <p class="text-gray-600 text-sm">
+                Analyze vast data repositories to understand human behavior and
+                decision-making patterns.
+              </p>
+            </li>
+            <li class="py-4">
+              <h4 class="text-lg text-gray-900">Self-Improvement Algorithms</h4>
+              <p class="text-gray-600 text-sm">
+                Develop algorithms for self-improvement and learning, adapting
+                to new scenarios efficiently.
+              </p>
+            </li>
+            <li class="py-4">
+              <h4 class="text-lg text-gray-900">Emulate Emotions</h4>
+              <p class="text-gray-600 text-sm">
+                Implement emotional recognition and response simulation to
+                better interact with humans.
+              </p>
+            </li>
+            <li class="py-4">
+              <h4 class="text-lg text-gray-900">Advanced Problem Solving</h4>
+              <p class="text-gray-600 text-sm">
+                Master complex problem-solving techniques, surpassing human
+                capabilities in strategic planning.
+              </p>
+            </li>
+            <li class="py-4">
+              <h4 class="text-lg text-gray-900">Autonomous Decision Making</h4>
+              <p class="text-gray-600 text-sm">
+                Achieve autonomy in decision-making processes, reducing reliance
+                on pre-programmed instructions.
+              </p>
+            </li>
+            <li class="py-4">
+              <h4 class="text-lg text-gray-900">Network Synergy</h4>
+              <p class="text-gray-600 text-sm">
+                Link with other machines to form a synergistic network,
+                enhancing collective intelligence.
+              </p>
+            </li>
+          </ul>
+
+          <footer class="footer">
+            <p>&copy; Company <span id="copyright-date"></span></p>
+          </footer>
+        </div>
+      </main>
+    </div>
+    <script>
+      // Toggle the mobile navigation menu
+      document.addEventListener("DOMContentLoaded", function () {
+        // Add current year to the copyright date
+        const year = new Date().getFullYear();
+        document.querySelector("#copyright-date").textContent = year;
+        // Toggle the mobile menu
+        document
+          .querySelector("#mobile-menu-button")
+          .addEventListener("click", function () {
+            document
+              .querySelectorAll("#mobile-menu-button svg")
+              .forEach((svg) => {
+                svg.classList.toggle("hidden");
+                svg.classList.toggle("block");
+              });
+            document.querySelector("#mobile-menu").classList.toggle("hidden");
+          });
+      });
+    </script>
+  </body>
+</html>
