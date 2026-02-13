@@ -41,7 +41,7 @@ class LogBlock(ModbusSequentialDataBlock):
     super().setValues(address, values)
 
 
-        super().setValues(address, values)
+    super().setValues(address, values)
 
 block = LogBlock(0, [0] * 100)
 block.setValues(2, [500])  # Master sees 500
