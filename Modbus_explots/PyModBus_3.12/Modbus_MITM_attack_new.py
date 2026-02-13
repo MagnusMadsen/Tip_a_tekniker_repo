@@ -27,11 +27,19 @@ class LogBlock(ModbusSequentialDataBlock):
 
         if address == TARGET_REGISTER:
             print(f"[FORWARD] Writing {FORCED_VALUE} to real slave HR[{TARGET_REGISTER}]")
+
             real_client.write_register(
                 TARGET_REGISTER,
                 FORCED_VALUE,
                 device_id=1
             )
+
+        # Master skal se en anden værdi lokalt
+        super().setValues(address, [500])
+        return
+
+    super().setValues(address, values)
+
 
         super().setValues(address, values)
 
