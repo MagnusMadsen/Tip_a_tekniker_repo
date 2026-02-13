@@ -23,7 +23,7 @@ def scan_func(client, unit: int, label: str, fn, start: int, end: int, count: in
     first = None
     for addr in range(start, end):
         try:
-            rr = fn(address=addr, count=count, slave=unit)
+            rr = fn(address=addr, count=count, device_id=unit)
         except Exception as e:
             print(f"[!] {label} addr={addr} exception: {e}")
             return None
