@@ -23,24 +23,18 @@ def scan_func(client, unit: int, label: str, fn, start: int, end: int, count: in
     first = None
     for addr in range(start, end):
         try:
-            rr = fn(address=addr, count=count, unit=unit)
+            rr = fn(address=addr, count=count, device_id=unit)
         except Exception as e:
-            # transport/decode issues
             print(f"[!] {label} addr={addr} exception: {e}")
             return None
 
         if ok(rr):
-            # show the value(s)
             val = getattr(rr, "bits", None)
             if val is None:
                 val = getattr(rr, "registers", None)
             print(f"[+] VALID {label}: addr={addr} -> {val}")
             first = addr
             break
-        else:
-            # Uncomment to see every error:
-            # print(f"[-] {label} addr={addr} error: {rr}")
-            pass
 
         time.sleep(STEP_DELAY)
 
@@ -57,19 +51,11 @@ def main():
     print(f"[+] Connected to {IP}:{PORT}")
 
     for unit in UNITS:
-        # Try a quick “read one” on common functions first (fast signal)
         print(f"\n=== Trying unit={unit} ===")
 
-        # Coils (0x01)
         scan_func(client, unit, "COILS(0x01)", client.read_coils, SCAN_START, SCAN_END, count=8)
-
-        # Discrete Inputs (0x02)
         scan_func(client, unit, "DISCRETE_INPUTS(0x02)", client.read_discrete_inputs, SCAN_START, SCAN_END, count=8)
-
-        # Holding Registers (0x03)
         scan_func(client, unit, "HOLDING_REGS(0x03)", client.read_holding_registers, SCAN_START, SCAN_END, count=4)
-
-        # Input Registers (0x04)
         scan_func(client, unit, "INPUT_REGS(0x04)", client.read_input_registers, SCAN_START, SCAN_END, count=4)
 
     client.close()
