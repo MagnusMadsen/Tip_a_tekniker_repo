@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import time
-from pymodbus.client.sync import ModbusTcpClient
+from pymodbus.client import ModbusTcpClient
 
 IP = sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1"
 PORT = 502
