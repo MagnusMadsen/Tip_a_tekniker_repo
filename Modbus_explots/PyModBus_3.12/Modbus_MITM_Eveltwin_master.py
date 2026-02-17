@@ -20,7 +20,7 @@ except Exception:  # older pymodbus
     NEW_API = False
 
 # ---- config (ETH1 SLAVE) ----
-LISTEN_IP, LISTEN_PORT = "172.16.4.51", 502   # IP on eth1
+LISTEN_IP, LISTEN_PORT = "172.16.4.50", 502   # IP on eth1
 UNIT_ID, REG_COUNT = 1, 100
 LOG_FILE = "modbus_slave_eth1.log"
 
