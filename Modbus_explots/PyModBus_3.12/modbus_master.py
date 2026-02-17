@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-from pymodbus.server import Server
-from pymodbus.datastore import ModbusSequentialDataBlock, ModbusSlaveContext, ModbusServerContext
+import logging  
+from pymodbus.server.asynchronous import StartTcpServer
+from pymodbus.datastore import ModbusSequentialDataBlock
+from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
+
+logging.basicConfig()
+log = logging.getLogger()
+log.setLevel(logging.DEBUG)
 
 store = ModbusSequentialDataBlock(0, [200]*20)
-slave_ctx = ModbusSlaveContext(hr=store)
-ctx = ModbusServerContext(slaves=slave_ctx, single=True)
+context = ModbusSlaveContext(hr=store)
+context = ModbusServerContext(slaves=context, single=True)
 
-print("Fake Modbus MASTER til Windows2 (Slave) på 172.16.4.50:502")
-server = Server(ctx, address=("172.16.4.50", 502))
-server.serve_forever()
+print("Fake Modbus MASTER til Windows2 (Slave) på 172.16.4.50:502") 
+StartTcpServer(context, address=("172.16.4.50", 502))
