@@ -11,7 +11,7 @@ LISTEN_PORT = 502          # Kali "fake slave" lytter her
 
 MASTER_UNIT = 1            # unit-id som Modbus Poll bruger
 
-REAL_SLAVE_IP = "192.168.70.61"
+REAL_SLAVE_IP = "172.16.4.51"
 REAL_SLAVE_PORT = 502      # rigtig slave port
 REAL_SLAVE_UNIT = 1
 
