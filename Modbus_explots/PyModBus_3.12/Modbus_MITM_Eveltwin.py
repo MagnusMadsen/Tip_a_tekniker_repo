@@ -1,70 +1,102 @@
 #!/usr/bin/env python3
+"""
+Simple Modbus TCP slave with:
+- Minimal terminal output (startup + only NEW/CHANGED writes)
+- Detailed file logging of all HR reads/writes
+
+Works across multiple pymodbus versions (API moved around).
+"""
+
 import logging
 from datetime import datetime
 from pymodbus.server import StartTcpServer
 
-# Kompatibel datastore-import (pymodbus varierer)
-try:
+# ---- pymodbus datastore compatibility (newer vs older) ----
+try:  # newer pymodbus
     from pymodbus.datastore import ModbusServerContext, ModbusDeviceContext, ModbusSparseDataBlock
     NEW_API = True
-except Exception:
+except Exception:  # older pymodbus
     from pymodbus.datastore import ModbusServerContext, ModbusSlaveContext, ModbusSparseDataBlock
     NEW_API = False
 
-LISTEN_IP = "0.0.0.0"
-LISTEN_PORT = 502
-UNIT_ID = 1
-REG_COUNT = 100
-
+# ---- config ----
+LISTEN_IP, LISTEN_PORT = "0.0.0.0", 502
+UNIT_ID, REG_COUNT = 1, 100
 LOG_FILE = "modbus_slave.log"
 
-def ts():
+
+def ts() -> str:
+    """Short timestamp for terminal messages."""
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# Logger: alt til fil, minimalt til terminal
-logger = logging.getLogger("modbus_slave")
-logger.setLevel(logging.DEBUG)
 
-fh = logging.FileHandler(LOG_FILE)
-fh.setLevel(logging.DEBUG)
-fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
-logger.addHandler(fh)
+def make_logger(path: str) -> logging.Logger:
+    """
+    Logger policy:
+    - Terminal: INFO only (startup + changed writes)
+    - File: DEBUG (all reads/writes with values)
+    """
+    log = logging.getLogger("modbus_slave")
+    log.setLevel(logging.DEBUG)
+    log.handlers.clear()
 
-sh = logging.StreamHandler()
-sh.setLevel(logging.INFO)
-sh.setFormatter(logging.Formatter("%(message)s"))
-logger.addHandler(sh)
+    file_h = logging.FileHandler(path)
+    file_h.setLevel(logging.DEBUG)
+    file_h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
+
+    term_h = logging.StreamHandler()
+    term_h.setLevel(logging.INFO)
+    term_h.setFormatter(logging.Formatter("%(message)s"))
+
+    log.addHandler(file_h)
+    log.addHandler(term_h)
+    return log
+
+
+def make_context(hr_block):
+    """
+    Build the server context:
+    - Newer pymodbus uses ModbusDeviceContext
+    - Older pymodbus uses ModbusSlaveContext + unit-id map
+    """
+    if NEW_API:
+        return ModbusServerContext(devices=ModbusDeviceContext(hr=hr_block), single=True)
+    return ModbusServerContext(slaves={UNIT_ID: ModbusSlaveContext(hr=hr_block)}, single=False)
+
 
 class LoggedHR(ModbusSparseDataBlock):
+    """
+    Holding register (HR) store that logs:
+    - ALL reads/writes to file (DEBUG)
+    - Only CHANGED writes to terminal (INFO)
+    """
+    def __init__(self, size: int, log: logging.Logger):
+        super().__init__({i: 0 for i in range(size)})
+        self.log = log
+
     def getValues(self, address, count=1):
-        values = super().getValues(address, count)
-        logger.debug(f"HR READ  addr={address} count={count} -> {values}")
-        return values
+        vals = super().getValues(address, count)
+        self.log.debug(f"HR READ  addr={address} count={count} -> {vals}")
+        return vals
 
     def setValues(self, address, values):
         values = list(values)
-        old = super().getValues(address, len(values))
-        logger.debug(f"HR WRITE addr={address} values={values} (old={old})")
-
-        # Terminal: kun hvis master sender noget "nyt" (ændring)
-        if list(old) != values:
-            logger.info(f"[{ts()}] MASTER WRITE: addr={address} values={values}")
-
+        old = list(super().getValues(address, len(values)))
+        self.log.debug(f"HR WRITE addr={address} values={values} (old={old})")
+        if old != values:
+            self.log.info(f"[{ts()}] MASTER WRITE: addr={address} values={values}")
         return super().setValues(address, values)
 
+
 def main():
-    hr = LoggedHR({i: 0 for i in range(REG_COUNT)})
+    log = make_logger(LOG_FILE)
+    hr = LoggedHR(REG_COUNT, log)
+    context = make_context(hr)
 
-    if NEW_API:
-        device = ModbusDeviceContext(hr=hr)
-        context = ModbusServerContext(devices=device, single=True)
-    else:
-        slave = ModbusSlaveContext(hr=hr)
-        context = ModbusServerContext(slaves={UNIT_ID: slave}, single=False)
-
-    logger.info(f"[{ts()}] Starting Modbus SLAVE on {LISTEN_IP}:{LISTEN_PORT} unit={UNIT_ID}")
-    logger.info(f"[{ts()}] Logging details to: {LOG_FILE}")
+    log.info(f"[{ts()}] Starting Modbus SLAVE on {LISTEN_IP}:{LISTEN_PORT} unit={UNIT_ID}")
+    log.info(f"[{ts()}] Detailed log: {LOG_FILE}")
     StartTcpServer(context, address=(LISTEN_IP, LISTEN_PORT))
+
 
 if __name__ == "__main__":
     main()
