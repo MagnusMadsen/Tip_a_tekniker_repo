@@ -1,50 +1,25 @@
 #!/usr/bin/env python3
 import socket
-import struct
+from pymodbus.server.tcp import ModbusTcpServer
+from pymodbus.datastore import ModbusSequentialDataBlock, ModbusSlaveContext, ModbusServerContext
 import logging
 
-logging.basicConfig(filename='slave_eth0.log', level=logging.INFO, format='%(asctime)s %(message)s')
+logging.basicConfig(filename='slave_eth0.log', level=logging.INFO)
 
-def handle_modbus_request(data):
-    """Simpel Modbus slave response"""
-    if len(data) < 8:
-        return struct.pack('>HHHBB', 0x0001, 0x0000, 0x0003, 0x01, 0x81)  # Error
-    
-    tid, pid, length, uid, fc = struct.unpack('>HHHBB', data[:7])
-    
-    if fc == 0x03:  # Read Holding Registers
-        addr = struct.unpack('>H', data[7:9])[0]
-        count = struct.unpack('>H', data[9:11])[0]
-        regs = [42, 100, 200, 300, 500][:count]  # Fake data
-        
-        pdu = bytes([fc, len(regs)*2]) + b''.join(struct.pack('>H', r) for r in regs)
-        resp_len = 3 + len(pdu)
-        
-    else:
-        pdu = bytes([fc + 0x80, 0x01])  # Illegal function
-        resp_len = 3 + len(pdu)
-    
-    return struct.pack('>HHH', tid, pid, resp_len) + bytes([uid]) + pdu
+# Fake datastore - register 2 starter på 0
+store = ModbusSlaveContext(
+    hr=ModbusSequentialDataBlock(0, [0, 0, 0, 123, 0]*100)  # Reg 2 = 123 fra master
+)
+context = ModbusServerContext(slaves=store, single=True)
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock = socket.socket()
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, b"eth0")
 sock.bind(('172.16.4.51', 502))
 sock.listen(5)
 
-print("=== SLAVE på 172.16.4.51:502 startet ===")
-print("Master kan connecte nu!")
+print("=== FIKTIV SLAVE på ETH0:502 ===")
+print("Venter på masterens værdi i register 2...")
 
-while True:
-    client, addr = sock.accept()
-    print(f"Master connected: {addr}")
-    
-    try:
-        data = client.recv(1024)
-        if data:
-            response = handle_modbus_request(data)
-            client.send(response)
-            logging.info(f"Req from {addr}: {data.hex()} -> Resp: {response.hex()}")
-    except:
-        pass
-    finally:
-        client.close()
+server = ModbusTcpServer(context, address=('172.16.4.51', 502), sock=sock)
+server.serve_forever()
