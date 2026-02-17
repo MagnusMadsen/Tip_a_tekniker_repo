@@ -4,7 +4,7 @@ from datetime import datetime
 from pymodbus.client import ModbusTcpClient
 
 # ---- Windows slave (den fysiske) ----
-WIN_SLAVE_IP = "172.16.4.51"   # SÆT DENNE til Windows-slavens IP
+WIN_SLAVE_IP = "172.16.4.51"   # RET til Windows-slavens IP (IKKE din Kali IP)
 WIN_SLAVE_PORT = 502
 UNIT_ID = 1
 
@@ -25,7 +25,9 @@ def main():
             time.sleep(1)
             continue
 
-        wr = c.write_register(TARGET_REG, VALUE, slave=UNIT_ID)
+        # pymodbus 3.x+: bruger "unit=" (ikke "slave=")
+        wr = c.write_register(TARGET_REG, VALUE, unit=UNIT_ID)
+
         if wr and not wr.isError():
             print(f"[{ts()}] wrote {VALUE} to HR[{TARGET_REG}] on {WIN_SLAVE_IP} unit={UNIT_ID}")
         else:
