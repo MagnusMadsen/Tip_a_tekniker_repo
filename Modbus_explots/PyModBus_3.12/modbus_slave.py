@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-from pymodbus.server.sync import StartTcpServer
-from pymodbus.datastore import ModbusSequentialDataBlock, ModbusSlaveContext, ModbusServerContext
+from pymodbus.server import StartTcpServer
+from pymodbus.datastore import ModbusSequentialDataBlock
+from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext
 
 store = ModbusSequentialDataBlock(0, [100]*20)
 context = ModbusSlaveContext(di=store, co=store, hr=store, ir=store)
