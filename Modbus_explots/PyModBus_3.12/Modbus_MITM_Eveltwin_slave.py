@@ -1,102 +1,87 @@
 #!/usr/bin/env python3
-"""
-Simple Modbus TCP slave with:
-- Minimal terminal output (startup + only NEW/CHANGED writes)
-- Detailed file logging of all HR reads/writes
+import asyncio
+import socket
+from pymodbus.server.async_io import StartTcpServer
+from pymodbus.device import ModbusDeviceIdentification
+from pymodbus.datastore import ModbusSequentialDataBlock, ModbusSlaveContext, ModbusServerContext
+import struct
 
-Works across multiple pymodbus versions (API moved around).
-"""
+# Konfig
+LISTEN_IP = "172.16.4.51"  # eth0 IP som Windows1 ser
+FORWARD_IP = "172.16.4.51"  # eth1 IP (windows2)
+FORWARD_PORT = 502
 
-import logging
-from datetime import datetime
-from pymodbus.server import StartTcpServer
+# Minimal datastore (bare for at holde forbindelse alive)
+store = ModbusSlaveContext(
+    di=ModbusSequentialDataBlock(0, [0]*100),
+    co=ModbusSequentialDataBlock(0, [0]*100),
+    hr=ModbusSequentialDataBlock(0, [0]*100),
+    ir=ModbusSequentialDataBlock(0, [0]*100))
+context = ModbusServerContext(slaves=store, single=True)
 
-# ---- pymodbus datastore compatibility (newer vs older) ----
-try:  # newer pymodbus
-    from pymodbus.datastore import ModbusServerContext, ModbusDeviceContext, ModbusSparseDataBlock
-    NEW_API = True
-except Exception:  # older pymodbus
-    from pymodbus.datastore import ModbusServerContext, ModbusSlaveContext, ModbusSparseDataBlock
-    NEW_API = False
+async def forward_to_real_slave(reader, writer):
+    """Forward request til rigtig slave og returnér svar"""
+    try:
+        # Læs Modbus TCP header (7 bytes) + PDU
+        header = await reader.readexactly(7)
+        tid, pid, len_bytes, uid, func = struct.unpack('>HHHB B', header)
+        pdu_len = len_bytes - 1
+        
+        pdu = b''
+        if pdu_len > 0:
+            pdu = await reader.readexactly(pdu_len)
+        
+        # Send til real slave
+        slave_reader, slave_writer = await asyncio.open_connection(FORWARD_IP, FORWARD_PORT)
+        await slave_writer.write(header + pdu)
+        await slave_writer.drain()
+        
+        # Læs svar
+        slave_header = await slave_reader.readexactly(7)
+        slave_tid, slave_pid, slave_len_bytes, slave_uid, slave_func = struct.unpack('>HHHB B', slave_header)
+        slave_pdu_len = slave_len_bytes - 1
+        slave_pdu = b''
+        if slave_pdu_len > 0:
+            slave_pdu = await slave_reader.readexactly(slave_pdu_len)
+        
+        slave_writer.close()
+        await slave_writer.wait_closed()
+        
+        # Send svar tilbage
+        response_header = struct.pack('>HHHB B', slave_tid, slave_pid, slave_len_bytes, slave_uid, slave_func)
+        writer.write(response_header + slave_pdu)
+        await writer.drain()
+        
+    except Exception as e:
+        print(f"Forward fejl: {e}")
+        # Send exception response
+        exc_header = struct.pack('>HHHBB', tid, pid, 3, uid, 0x01)  # Illegal function
+        writer.write(exc_header)
+        await writer.drain()
 
-# ---- config ----
-LISTEN_IP, LISTEN_PORT = "172.16.4.51", 502
-UNIT_ID, REG_COUNT = 1, 100
-LOG_FILE = "modbus_slave.log"
+async def handle_client(reader, writer):
+    """Håndter hver klient-forbindelse"""
+    addr = writer.get_extra_info('peername')
+    print(f"Ny forbindelse fra {addr}")
+    
+    while True:
+        try:
+            await forward_to_real_slave(reader, writer)
+        except asyncio.IncompleteReadError:
+            break
+        except Exception as e:
+            print(f"Client håndtering fejl: {e}")
+            break
+    
+    writer.close()
+    await writer.wait_closed()
 
-
-def ts() -> str:
-    """Short timestamp for terminal messages."""
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-def make_logger(path: str) -> logging.Logger:
-    """
-    Logger policy:
-    - Terminal: INFO only (startup + changed writes)
-    - File: DEBUG (all reads/writes with values)
-    """
-    log = logging.getLogger("modbus_slave")
-    log.setLevel(logging.DEBUG)
-    log.handlers.clear()
-
-    file_h = logging.FileHandler(path)
-    file_h.setLevel(logging.DEBUG)
-    file_h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
-
-    term_h = logging.StreamHandler()
-    term_h.setLevel(logging.INFO)
-    term_h.setFormatter(logging.Formatter("%(message)s"))
-
-    log.addHandler(file_h)
-    log.addHandler(term_h)
-    return log
-
-
-def make_context(hr_block):
-    """
-    Build the server context:
-    - Newer pymodbus uses ModbusDeviceContext
-    - Older pymodbus uses ModbusSlaveContext + unit-id map
-    """
-    if NEW_API:
-        return ModbusServerContext(devices=ModbusDeviceContext(hr=hr_block), single=True)
-    return ModbusServerContext(slaves={UNIT_ID: ModbusSlaveContext(hr=hr_block)}, single=False)
-
-
-class LoggedHR(ModbusSparseDataBlock):
-    """
-    Holding register (HR) store that logs:
-    - ALL reads/writes to file (DEBUG)
-    - Only CHANGED writes to terminal (INFO)
-    """
-    def __init__(self, size: int, log: logging.Logger):
-        super().__init__({i: 0 for i in range(size)})
-        self.log = log
-
-    def getValues(self, address, count=1):
-        vals = super().getValues(address, count)
-        self.log.debug(f"HR READ  addr={address} count={count} -> {vals}")
-        return vals
-
-    def setValues(self, address, values):
-        values = list(values)
-        old = list(super().getValues(address, len(values)))
-        self.log.debug(f"HR WRITE addr={address} values={values} (old={old})")
-        if old != values:
-            self.log.info(f"[{ts()}] MASTER WRITE: addr={address} values={values}")
-        return super().setValues(address, values)
-
-
-def main():
-    log = make_logger(LOG_FILE)
-    hr = LoggedHR(REG_COUNT, log)
-    context = make_context(hr)
-
-    log.info(f"[{ts()}] Starting Modbus SLAVE on {LISTEN_IP}:{LISTEN_PORT} unit={UNIT_ID}")
-    log.info(f"[{ts()}] Detailed log: {LOG_FILE}")
-    StartTcpServer(context, address=(LISTEN_IP, LISTEN_PORT))
-
+async def main():
+    server = await asyncio.start_server(handle_client, LISTEN_IP, 502)
+    print(f"Modbus Slave Proxy lytter på {LISTEN_IP}:502 -> forwarder til {FORWARD_IP}:502")
+    
+    async with server:
+        await server.serve_forever()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

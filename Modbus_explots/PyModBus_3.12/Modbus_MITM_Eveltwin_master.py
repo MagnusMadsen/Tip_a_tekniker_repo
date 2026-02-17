@@ -1,39 +1,69 @@
 #!/usr/bin/env python3
-import time
-from datetime import datetime
-from pymodbus.client import ModbusTcpClient
+import asyncio
+import struct
 
-# ---- Windows slave (den fysiske) ----
-WIN_SLAVE_IP = "172.16.4.51"   # RET til Windows-slavens IP (IKKE din Kali IP)
-WIN_SLAVE_PORT = 502
-UNIT_ID = 1
+# Konfig
+LISTEN_IP = "172.16.4.50"  # eth1 IP som windows2 ser
+FORWARD_IP = "172.16.4.50"  # eth0 IP (windows1)
+FORWARD_PORT = 502
 
-# ---- hvad vil du skrive ----
-TARGET_REG = 2
-VALUE = 999
-INTERVAL_SEC = 1
+async def forward_to_real_master(reader, writer):
+    """Forward request fra slave til rigtig master og returnér svar"""
+    try:
+        # Læs fuld Modbus request
+        header = await reader.readexactly(7)
+        tid, pid, len_bytes, uid, func = struct.unpack('>HHHB B', header)
+        pdu_len = len_bytes - 1
+        pdu = b''
+        if pdu_len > 0:
+            pdu = await reader.readexactly(pdu_len)
+        
+        # Send til real master
+        master_reader, master_writer = await asyncio.open_connection(FORWARD_IP, FORWARD_PORT)
+        await master_writer.write(header + pdu)
+        await master_writer.drain()
+        
+        # Læs svar fra master
+        master_header = await master_reader.readexactly(7)
+        master_tid, master_pid, master_len_bytes, master_uid, master_func = struct.unpack('>HHHB B', master_header)
+        master_pdu_len = master_len_bytes - 1
+        master_pdu = b''
+        if master_pdu_len > 0:
+            master_pdu = await master_reader.readexactly(master_pdu_len)
+        
+        master_writer.close()
+        await master_writer.wait_closed()
+        
+        # Send svar tilbage til slave
+        response_header = struct.pack('>HHHB B', master_tid, master_pid, master_len_bytes, master_uid, master_func)
+        writer.write(response_header + master_pdu)
+        await writer.drain()
+        
+    except Exception as e:
+        print(f"Forward fejl: {e}")
+        exc_header = struct.pack('>HHHBB', tid, pid, 3, uid, 0x01)
+        writer.write(exc_header)
+        await writer.drain()
 
-def ts():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-def main():
-    c = ModbusTcpClient(WIN_SLAVE_IP, port=WIN_SLAVE_PORT)
-
+async def handle_client(reader, writer):
+    addr = writer.get_extra_info('peername')
+    print(f"Ny forbindelse fra {addr}")
+    
     while True:
-        if not c.connect():
-            print(f"[{ts()}] connect FAILED -> {WIN_SLAVE_IP}:{WIN_SLAVE_PORT}")
-            time.sleep(1)
-            continue
+        try:
+            await forward_to_real_master(reader, writer)
+        except:
+            break
+    
+    writer.close()
+    await writer.wait_closed()
 
-        # pymodbus 3.x+: bruger "unit=" (ikke "slave=")
-        wr = c.write_register(TARGET_REG, VALUE, unit=UNIT_ID)
-
-        if wr and not wr.isError():
-            print(f"[{ts()}] wrote {VALUE} to HR[{TARGET_REG}] on {WIN_SLAVE_IP} unit={UNIT_ID}")
-        else:
-            print(f"[{ts()}] write FAILED: {wr}")
-
-        time.sleep(INTERVAL_SEC)
+async def main():
+    server = await asyncio.start_server(handle_client, LISTEN_IP, 502)
+    print(f"Modbus Master Proxy lytter på {LISTEN_IP}:502 -> forwarder til {FORWARD_IP}:502")
+    
+    async with server:
+        await server.serve_forever()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
