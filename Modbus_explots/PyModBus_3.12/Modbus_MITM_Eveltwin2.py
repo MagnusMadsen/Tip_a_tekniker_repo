@@ -2,18 +2,40 @@
 from pymodbus.server import StartTcpServer
 from pymodbus.client import ModbusTcpClient
 
-from pymodbus.datastore.store import ModbusSequentialDataBlock
-from pymodbus.datastore.context import ModbusSlaveContext, ModbusServerContext
+# ---- compat imports (pymodbus 2.x / 3.x / 4.x-ish) ----
+try:
+    # Newer: DeviceContext style
+    from pymodbus.datastore import ModbusServerContext, ModbusDeviceContext
+except Exception:
+    ModbusDeviceContext = None
+    from pymodbus.datastore import ModbusServerContext, ModbusSlaveContext  # older
 
+try:
+    from pymodbus.datastore import ModbusSequentialDataBlock as DataBlock
+except Exception:
+    # Newer builds often have Sparse datablock instead
+    from pymodbus.datastore import ModbusSparseDataBlock as DataBlock
+
+# Fake slave (din maskine)
 LISTEN_IP = "172.16.4.51"
 LISTEN_PORT = 502
 UNIT_ID = 1
 
+# Upstream (den du forwarder til)
 UPSTREAM_IP = "172.16.4.50"
 UPSTREAM_PORT = 502
 UPSTREAM_UNIT = 1
 
-class ProxyHoldingBlock(ModbusSequentialDataBlock):
+REG_COUNT = 100
+
+class ProxyHoldingBlock(DataBlock):
+    def __init__(self):
+        # Sequential: (0, [0]*N)  |  Sparse: ([0]*N) virker i nyere docs
+        try:
+            super().__init__(0, [0] * REG_COUNT)
+        except TypeError:
+            super().__init__([0] * REG_COUNT)
+
     def getValues(self, address, count=1):
         c = ModbusTcpClient(UPSTREAM_IP, port=UPSTREAM_PORT)
         if not c.connect():
@@ -42,13 +64,20 @@ class ProxyHoldingBlock(ModbusSequentialDataBlock):
             c.close()
 
 def main():
-    store = ModbusSlaveContext(
-        di=ModbusSequentialDataBlock(0, [0]*100),
-        co=ModbusSequentialDataBlock(0, [0]*100),
-        hr=ProxyHoldingBlock(0, [0]*100),
-        ir=ModbusSequentialDataBlock(0, [0]*100),
-    )
-    context = ModbusServerContext(slaves={UNIT_ID: store}, single=False)
+    # Lav datablocks
+    di = DataBlock([0] * REG_COUNT) if DataBlock.__name__ == "ModbusSparseDataBlock" else DataBlock(0, [0] * REG_COUNT)
+    co = DataBlock([0] * REG_COUNT) if DataBlock.__name__ == "ModbusSparseDataBlock" else DataBlock(0, [0] * REG_COUNT)
+    ir = DataBlock([0] * REG_COUNT) if DataBlock.__name__ == "ModbusSparseDataBlock" else DataBlock(0, [0] * REG_COUNT)
+    hr = ProxyHoldingBlock()
+
+    # Nyere API: ModbusDeviceContext / ældre: ModbusSlaveContext
+    if ModbusDeviceContext:
+        device = ModbusDeviceContext(di=di, co=co, hr=hr, ir=ir)
+        context = ModbusServerContext(devices=device, single=True)
+    else:
+        slave = ModbusSlaveContext(di=di, co=co, hr=hr, ir=ir)
+        context = ModbusServerContext(slaves={UNIT_ID: slave}, single=False)
+
     StartTcpServer(context, address=(LISTEN_IP, LISTEN_PORT))
 
 if __name__ == "__main__":
