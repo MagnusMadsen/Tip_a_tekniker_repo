@@ -64,12 +64,16 @@ class LoggedHR(ModbusSparseDataBlock):
         return vals
 
     def setValues(self, address, values):
-        forced = [999] * len(list(values))  # samme længde som det master prøver at skrive
-        old = list(super().getValues(address, len(forced)))
-        self.log.debug(f"HR WRITE addr={address} forced={forced} (old={old})")
-        if old != forced:
-            self.log.info(f"[{ts()}] FORCED WRITE: addr={address} values={forced}")
-        return super().setValues(address, forced)
+        values = list(values)
+        for i in range(len(values)):
+            if address + i == 2:   # register 2
+                values[i] = 999
+        old = list(super().getValues(address, len(values)))
+        self.log.debug(f"HR WRITE addr={address} values={values} (old={old})")
+        if old != values:
+            self.log.info(f"[{ts()}] MASTER WRITE (modified): addr={address} values={values}")
+        return super().setValues(address, values)
+
 
 
 
