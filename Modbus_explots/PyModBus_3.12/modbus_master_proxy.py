@@ -1,24 +1,38 @@
 #!/usr/bin/env python3
-from pymodbus.client import ModbusTcpClient
+import socket
+import struct
 import time
 import logging
 
-logging.basicConfig(filename='master_eth1.log', level=logging.INFO)
+logging.basicConfig(filename='master_eth1.log', level=logging.INFO, format='%(asctime)s %(message)s')
 
-print("=== MASTER på eth1:502 startet ===")
-print("Slave (172.16.4.51) kan nu connecte til 172.16.4.50:502")
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind(('172.16.4.50', 502))
+sock.listen(5)
 
-# Client bundet til eth1
-client = ModbusTcpClient("172.16.4.51", port=502, source_address=("172.16.4.50", 502))
+print("=== MASTER på 172.16.4.50:502 startet ===")
+print("Slave kan connecte nu!")
 
-try:
-    client.connect()
-    while True:
-        # Læs holding registers (simuler master polling)
-        result = client.read_holding_registers(0, 10, unit=1)
-        if not result.isError():
-            print(f"Læst: {result.registers}")
-            logging.info(f"Læst registers: {result.registers}")
-        time.sleep(2)
-finally:
+while True:
+    client, addr = sock.accept()
+    print(f"Slave connected: {addr}")
+    
+    data = client.recv(1024)
+    if data:
+        tid = struct.unpack('>H', data[0:2])[0]
+        uid = data[6]
+        
+        # Simuler Read Holding Registers request (fc=03)
+        req = struct.pack('>HHHBBHH', tid, 0, 0x0006, uid, 0x03, 0x0000, 0x0004)
+        client.send(req)
+        logging.info(f"Sent poll to {addr}")
+        
+        try:
+            resp = client.recv(1024)
+            print(f"Fra slave {addr}: {resp.hex()}")
+            logging.info(f"Resp from {addr}: {resp.hex()}")
+        except:
+            pass
+    
     client.close()
