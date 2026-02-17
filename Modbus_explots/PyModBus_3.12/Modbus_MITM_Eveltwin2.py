@@ -1,27 +1,19 @@
 #!/usr/bin/env python3
-
 from pymodbus.server import StartTcpServer
 from pymodbus.client import ModbusTcpClient
-from pymodbus.datastore import (
-    ModbusSlaveContext,
-    ModbusServerContext,
-    ModbusSequentialDataBlock,
-)
 
-# Fake slave (din maskine)
+from pymodbus.datastore.store import ModbusSequentialDataBlock
+from pymodbus.datastore.context import ModbusSlaveContext, ModbusServerContext
+
 LISTEN_IP = "172.16.4.51"
 LISTEN_PORT = 502
 UNIT_ID = 1
 
-# Upstream (den du vil forwarde til)
 UPSTREAM_IP = "172.16.4.50"
 UPSTREAM_PORT = 502
 UPSTREAM_UNIT = 1
 
 class ProxyHoldingBlock(ModbusSequentialDataBlock):
-    def __init__(self, address, values):
-        super().__init__(address, values)
-
     def getValues(self, address, count=1):
         c = ModbusTcpClient(UPSTREAM_IP, port=UPSTREAM_PORT)
         if not c.connect():
@@ -50,14 +42,12 @@ class ProxyHoldingBlock(ModbusSequentialDataBlock):
             c.close()
 
 def main():
-    # Proxy kun Holding Registers (hr). Resten er “dummy”.
     store = ModbusSlaveContext(
         di=ModbusSequentialDataBlock(0, [0]*100),
         co=ModbusSequentialDataBlock(0, [0]*100),
         hr=ProxyHoldingBlock(0, [0]*100),
         ir=ModbusSequentialDataBlock(0, [0]*100),
     )
-
     context = ModbusServerContext(slaves={UNIT_ID: store}, single=False)
     StartTcpServer(context, address=(LISTEN_IP, LISTEN_PORT))
 
