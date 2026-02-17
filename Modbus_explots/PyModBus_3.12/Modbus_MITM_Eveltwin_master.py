@@ -1,91 +1,37 @@
 #!/usr/bin/env python3
-"""
-Simple Modbus TCP slave on eth1 (172.16.4.51):
-- Terminal: startup + only CHANGED writes
-- File: all HR reads/writes
-
-Note: you must bind to the IP on eth1 (or use 0.0.0.0).
-"""
-
-import logging
+import time
 from datetime import datetime
-from pymodbus.server import StartTcpServer
+from pymodbus.client import ModbusTcpClient
 
-# ---- pymodbus datastore compatibility (newer vs older) ----
-try:  # newer pymodbus
-    from pymodbus.datastore import ModbusServerContext, ModbusDeviceContext, ModbusSparseDataBlock
-    NEW_API = True
-except Exception:  # older pymodbus
-    from pymodbus.datastore import ModbusServerContext, ModbusSlaveContext, ModbusSparseDataBlock
-    NEW_API = False
+# ---- Windows slave (den fysiske) ----
+WIN_SLAVE_IP = "172.16.4.51"   # SÆT DENNE til Windows-slavens IP
+WIN_SLAVE_PORT = 502
+UNIT_ID = 1
 
-# ---- config (ETH1 SLAVE) ----
-LISTEN_IP, LISTEN_PORT = "172.16.4.51", 502   # IP on eth1
-UNIT_ID, REG_COUNT = 1, 100
-LOG_FILE = "modbus_slave_eth1.log"
+# ---- hvad vil du skrive ----
+TARGET_REG = 2
+VALUE = 999
+INTERVAL_SEC = 1
 
-
-def ts() -> str:
+def ts():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-
-def make_logger(path: str) -> logging.Logger:
-    log = logging.getLogger(f"modbus_slave_{path}")
-    log.setLevel(logging.DEBUG)
-    log.handlers.clear()
-
-    file_h = logging.FileHandler(path)
-    file_h.setLevel(logging.DEBUG)
-    file_h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s: %(message)s"))
-
-    term_h = logging.StreamHandler()
-    term_h.setLevel(logging.INFO)
-    term_h.setFormatter(logging.Formatter("%(message)s"))
-
-    log.addHandler(file_h)
-    log.addHandler(term_h)
-    return log
-
-
-def make_context(hr_block):
-    if NEW_API:
-        return ModbusServerContext(devices=ModbusDeviceContext(hr=hr_block), single=True)
-    return ModbusServerContext(slaves={UNIT_ID: ModbusSlaveContext(hr=hr_block)}, single=False)
-
-
-class LoggedHR(ModbusSparseDataBlock):
-    def __init__(self, size: int, log: logging.Logger):
-        super().__init__({i: 0 for i in range(size)})
-        self.log = log
-
-    def getValues(self, address, count=1):
-        vals = super().getValues(address, count)
-        self.log.debug(f"HR READ  addr={address} count={count} -> {vals}")
-        return vals
-
-    def setValues(self, address, values):
-        values = list(values)
-        for i in range(len(values)):
-            if address + i == 2:   # register 2
-                values[i] = 999
-        old = list(super().getValues(address, len(values)))
-        self.log.debug(f"HR WRITE addr={address} values={values} (old={old})")
-        if old != values:
-            self.log.info(f"[{ts()}] MASTER WRITE (modified): addr={address} values={values}")
-        return super().setValues(address, values)
-
-
-
-
 def main():
-    log = make_logger(LOG_FILE)
-    hr = LoggedHR(REG_COUNT, log)
-    context = make_context(hr)
+    c = ModbusTcpClient(WIN_SLAVE_IP, port=WIN_SLAVE_PORT)
 
-    log.info(f"[{ts()}] Starting Modbus SLAVE (eth1) on {LISTEN_IP}:{LISTEN_PORT} unit={UNIT_ID}")
-    log.info(f"[{ts()}] Detailed log: {LOG_FILE}")
-    StartTcpServer(context, address=(LISTEN_IP, LISTEN_PORT))
+    while True:
+        if not c.connect():
+            print(f"[{ts()}] connect FAILED -> {WIN_SLAVE_IP}:{WIN_SLAVE_PORT}")
+            time.sleep(1)
+            continue
 
+        wr = c.write_register(TARGET_REG, VALUE, slave=UNIT_ID)
+        if wr and not wr.isError():
+            print(f"[{ts()}] wrote {VALUE} to HR[{TARGET_REG}] on {WIN_SLAVE_IP} unit={UNIT_ID}")
+        else:
+            print(f"[{ts()}] write FAILED: {wr}")
+
+        time.sleep(INTERVAL_SEC)
 
 if __name__ == "__main__":
     main()
