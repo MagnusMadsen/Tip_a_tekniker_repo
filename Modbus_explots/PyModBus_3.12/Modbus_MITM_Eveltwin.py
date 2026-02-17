@@ -1,28 +1,34 @@
 #!/usr/bin/env python3
+from pymodbus.server import StartTcpServer
 
-from pymodbus.server.sync import StartTcpServer
-from pymodbus.datastore import ModbusSlaveContext, ModbusServerContext, ModbusSequentialDataBlock
+# ---- datastore compat (pymodbus 2/3/4) ----
+try:
+    # Newer pymodbus
+    from pymodbus.datastore import ModbusServerContext, ModbusDeviceContext, ModbusSparseDataBlock
+    NEW_API = True
+except Exception:
+    # Older pymodbus
+    from pymodbus.datastore import ModbusServerContext, ModbusSlaveContext, ModbusSparseDataBlock
+    NEW_API = False
 
-LISTEN_IP = "172.16.4.51"
+LISTEN_IP = "0.0.0.0"   # lyt på eth1 også (nemmest)
 LISTEN_PORT = 502
-
 UNIT_ID = 1
+
 REG_COUNT = 100
 
-# Sæt evt. nogle startværdier
-TARGET_REG = 2
-TARGET_VALUE = 43
-
 def main():
-    hr_block = ModbusSequentialDataBlock(0, [0] * REG_COUNT)
-    hr_block.setValues(TARGET_REG, [TARGET_VALUE])
+    # SparseDataBlock: map register->værdi
+    hr = ModbusSparseDataBlock({i: 0 for i in range(REG_COUNT)})
 
-    store = ModbusSlaveContext(hr=hr_block)
-    context = ModbusServerContext(slaves={UNIT_ID: store}, single=False)
+    if NEW_API:
+        device = ModbusDeviceContext(hr=hr)
+        context = ModbusServerContext(devices=device, single=True)
+    else:
+        slave = ModbusSlaveContext(hr=hr)
+        context = ModbusServerContext(slaves={UNIT_ID: slave}, single=False)
 
     StartTcpServer(context, address=(LISTEN_IP, LISTEN_PORT))
 
 if __name__ == "__main__":
     main()
-
-
