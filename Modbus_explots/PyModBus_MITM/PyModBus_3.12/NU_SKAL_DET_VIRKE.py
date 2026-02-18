@@ -59,7 +59,7 @@ class SlaveFacingMaster:  # Lytter på eth1 - prætenderer at være MASTER
         block = LogBlock(0, [0] * 100)
         block._name = "FAKE_MASTER"
         store = ModbusSlaveContext(hr=block)
-        self.context = ModbusServerContext(slaves=store, single=True)
+        self.context = ModbusServerContext(slaves=store, single=True) 
 
     def setValues(self, address, values):
         """Forward writes to REAL slave"""
