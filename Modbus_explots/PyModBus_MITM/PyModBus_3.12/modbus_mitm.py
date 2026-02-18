@@ -15,7 +15,7 @@ TARGET_REGISTER = 2
 FAKE_VALUE = 500        # Hvad MASTER SKAL SE på reg 2
 FORCE_VALUE = 999       # Hvad REAL SLAVE FAKTISK FÅR skrevet
 
-REAL_SLAVE_IP = "192.168.70.61"  # Din fysiske slave
+REAL_SLAVE_IP = "172.16.4.51"  # Din fysiske slave
 REAL_SLAVE_PORT = 502
 
 NETWORK = {
