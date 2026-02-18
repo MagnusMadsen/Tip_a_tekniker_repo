@@ -4,8 +4,8 @@ from scapy.layers.inet import *
 import sys
 
 # define global variables to hold the master and slave IPs
-master_ip = "192.168.15.10"
-slave_ip = "192.168.15.9"
+master_ip = "192.168.61.246"
+slave_ip = "192.168.61.21"
 # and a dictionary to hold the state the master believes the slave to be in
 slave_state = {}
 # and a dictionary to hold the transaction id state

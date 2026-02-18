@@ -2,7 +2,7 @@
 
 import sys
 import time
-from pymodbus.client import ModbusTcpClient as ModbusClient
+from pymodbus.client.sync import ModbusTcpClient as ModbusClient
 from pymodbus.exceptions import ConnectionException
 
 ip = sys.argv[1]
@@ -11,4 +11,4 @@ client.connect()
 while True:
     rr = client.read_holding_registers(1, 16)
     print(rr.registers)
-    time.sleep(1)
+    time.sleep(1) 
