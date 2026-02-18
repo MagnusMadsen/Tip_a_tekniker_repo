@@ -96,53 +96,53 @@ def content_mask(mbus):
 
     	# test to see if we have a string we understand
     	if(len(mbus) < 8):
-            	print "modbus command underlength"
-            	return mbus
-    	# parse out the useful values, use if/elif/else cause we don't have switch
-    	TransID = mbus[:2]
-    	length = int(mbus[4:6].encode('hex'), 16)
-    	command = int(mbus[7].encode('hex'), 16)
-    	# test to see if the command length makes sense
-    	if(len(mbus) != length + 6):
-            	print "modbus command length attr not valid"
-            	return mbus
+                    print "modbus command underlength"
+                    return mbus
+            # parse out the useful values, use if/elif/else cause we don't have switch
+            TransID = mbus[:2]
+            length = int(mbus[4:6].encode('hex'), 16)
+            command = int(mbus[7].encode('hex'), 16)
+            # test to see if the command length makes sense
+            if(len(mbus) != length + 6):
+                    print "modbus command length attr not valid"
+                    return mbus
 
-    	# we care about reads and writes
-    	global slave_state
-    global trans_dict
-    if((command == 1) and (length >= 4)): # reading
-   	 NumberBytes = int(mbus[8].encode('hex'), 16)
-   	 BinaryStr = bin(int(mbus[9:].encode('hex'), 16))[2:]
-   	 # if we can't find the entry in our transaction dictionary, don't do anything
-   	 if(TransID not in trans_dict): return mbus
-   	 #print "Binary String From Slave: " + BinaryStr
-   	 # now we walk backwards throught the string because we don't know if there is padding
-   	 for x in range(-1, -1 - len(trans_dict[TransID]), -1):
-   		 num = trans_dict[TransID].pop()
-   		 if(x == -1):
-   			 if(num == 0):   BinaryStr = BinaryStr[:x] + '0'
-                            	elif(num == 1): BinaryStr = BinaryStr[:x] + '1'
-   		 else:
-   			 if(num == 0):   BinaryStr = BinaryStr[:x] + '0' + BinaryStr[x+1:]
-   			 elif(num == 1): BinaryStr = BinaryStr[:x] + '1' + BinaryStr[x+1:]
-                   		 # else: do nothing
-   	 # BinaryStr is now masked to what it should be
-   	 #print "Binary String to Master: " + BinaryStr
-   	 # convert it back to hex and append it to the response
-   	 HexStr = hex(int(BinaryStr, 2))[2:]
-   	 #print "HexStr = " + HexStr
-   	 HexStr = HexStr.zfill(len(HexStr) + len(HexStr) % 2) # pad with 0's if needed
-   	 mbus = mbus[:9] + HexStr.decode("hex")
-   	 # we are done with the transaction at this point
-        	del trans_dict[TransID]
-    elif((command == 5) and (length == 6)): # write coil
-            	CoilAddr = int(mbus[8:10].encode('hex'), 16)
-   	 # don't modify if we can't find a record for it
-   	 if(CoilAddr not in slave_state): return mbus
-            	if(slave_state[CoilAddr] == 0): mbus = mbus[:10] + '\x00\x00'
-            	else: mbus = mbus[:10] + '\xFF\x00'
-   	 
-    return mbus
+            # we care about reads and writes
+        global slave_state
+        global trans_dict
+        if((command == 1) and (length >= 4)): # reading
+        NumberBytes = int(mbus[8].encode('hex'), 16)
+        BinaryStr = bin(int(mbus[9:].encode('hex'), 16))[2:]
+        # if we can't find the entry in our transaction dictionary, don't do anything
+        if(TransID not in trans_dict): return mbus
+        #print "Binary String From Slave: " + BinaryStr
+        # now we walk backwards throught the string because we don't know if there is padding
+        for x in range(-1, -1 - len(trans_dict[TransID]), -1):
+            num = trans_dict[TransID].pop()
+            if(x == -1):
+                if(num == 0):   BinaryStr = BinaryStr[:x] + '0'
+                                    elif(num == 1): BinaryStr = BinaryStr[:x] + '1'
+            else:
+                if(num == 0):   BinaryStr = BinaryStr[:x] + '0' + BinaryStr[x+1:]
+                elif(num == 1): BinaryStr = BinaryStr[:x] + '1' + BinaryStr[x+1:]
+                            # else: do nothing
+        # BinaryStr is now masked to what it should be
+        #print "Binary String to Master: " + BinaryStr
+        # convert it back to hex and append it to the response
+        HexStr = hex(int(BinaryStr, 2))[2:]
+        #print "HexStr = " + HexStr
+        HexStr = HexStr.zfill(len(HexStr) + len(HexStr) % 2) # pad with 0's if needed
+        mbus = mbus[:9] + HexStr.decode("hex")
+        # we are done with the transaction at this point
+                del trans_dict[TransID]
+        elif((command == 5) and (length == 6)): # write coil
+                    CoilAddr = int(mbus[8:10].encode('hex'), 16)
+        # don't modify if we can't find a record for it
+        if(CoilAddr not in slave_state): return mbus
+                    if(slave_state[CoilAddr] == 0): mbus = mbus[:10] + '\x00\x00'
+                    else: mbus = mbus[:10] + '\xFF\x00'
+        
+        return mbus
 
 def packet_wrapper(new_value):
     def packet_adjust(pkt):
