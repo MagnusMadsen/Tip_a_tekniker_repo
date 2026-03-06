@@ -1,0 +1,533 @@
+{
+  "meta": {
+    "vendor": "Westermo",
+    "os": "WeOS",
+    "release": "5.20.1",
+    "codename": "trocadero",
+    "platform": "Envoy",
+    "system": "Lynx Lynx-3310-E-F2G-T8-LV",
+    "art-no": "3627-0570-002",
+    "serial": 2717
+  },
+  "aaa": {
+    "login": {
+      "methods": "login",
+      "id": 0
+    },
+    "acl": [
+      {
+        "id": "login",
+        "type": "local-db",
+        "users": [
+          {
+            "description": "This entry is deprecated.",
+            "id": "admin",
+            "hash": "$1$P6324OXU$bjjOCz3PfGNzz3qeO8k2k1"
+          }
+        ],
+        "accounts": [
+          {
+            "id": "admin",
+            "enabled": true,
+            "role": "administrator",
+            "hash": "$1$P6324OXU$bjjOCz3PfGNzz3qeO8k2k1",
+            "authorized-keys": []
+          }
+        ],
+        "local_db": [],
+        "server": [],
+        "group": []
+      }
+    ],
+    "lockout-policy": {
+      "enabled": true,
+      "deny": 3,
+      "even_deny_root": true,
+      "unlock_time": 600
+    }
+  },
+  "system": {
+    "hostname": "westermo-modbus-island",
+    "description": "Minimal isolated L2 switch",
+    "location": "",
+    "contact": "",
+    "motd": "",
+    "timezone": "Etc/UTC",
+    "bypass-at-startup": 0
+  },
+  "lag": [],
+  "port": [
+    {
+      "id": "eth1",
+      "enabled": true,
+      "description": "modbus-master",
+      "learning": true,
+      "multicast-fast-leave": false,
+      "multicast-router-port": false,
+      "multicast-flood-unknown": true,
+      "bridge-group": 0,
+      "default-vid": 0,
+      "media": [
+        {
+          "type": "tp",
+          "mdix": "auto",
+          "autoneg": true,
+          "speed-duplex": [],
+          "fastlink": "disabled"
+        }
+      ],
+      "priority-mode": "tag",
+      "priority": 0,
+      "lldp": {
+        "enabled": false,
+        "direction": "rx-and-tx"
+      }
+    },
+    {
+      "id": "eth2",
+      "enabled": true,
+      "description": "modbus-slave-1",
+      "learning": true,
+      "multicast-fast-leave": false,
+      "multicast-router-port": false,
+      "multicast-flood-unknown": true,
+      "bridge-group": 0,
+      "default-vid": 0,
+      "media": [
+        {
+          "type": "tp",
+          "mdix": "auto",
+          "autoneg": true,
+          "speed-duplex": [],
+          "fastlink": "disabled"
+        }
+      ],
+      "priority-mode": "tag",
+      "priority": 0,
+      "lldp": {
+        "enabled": false,
+        "direction": "rx-and-tx"
+      }
+    },
+    {
+      "id": "eth3",
+      "enabled": true,
+      "description": "modbus-slave-2",
+      "learning": true,
+      "multicast-fast-leave": false,
+      "multicast-router-port": false,
+      "multicast-flood-unknown": true,
+      "bridge-group": 0,
+      "default-vid": 0,
+      "media": [
+        {
+          "type": "tp",
+          "mdix": "auto",
+          "autoneg": true,
+          "speed-duplex": [],
+          "fastlink": "disabled"
+        }
+      ],
+      "priority-mode": "tag",
+      "priority": 0,
+      "lldp": {
+        "enabled": false,
+        "direction": "rx-and-tx"
+      }
+    },
+    {
+      "id": "eth4",
+      "enabled": true,
+      "description": "modbus-slave-3",
+      "learning": true,
+      "multicast-fast-leave": false,
+      "multicast-router-port": false,
+      "multicast-flood-unknown": true,
+      "bridge-group": 0,
+      "default-vid": 0,
+      "media": [
+        {
+          "type": "tp",
+          "mdix": "auto",
+          "autoneg": true,
+          "speed-duplex": [],
+          "fastlink": "disabled"
+        }
+      ],
+      "priority-mode": "tag",
+      "priority": 0,
+      "lldp": {
+        "enabled": false,
+        "direction": "rx-and-tx"
+      }
+    },
+    {
+      "id": "eth5",
+      "enabled": false,
+      "description": "unused",
+      "learning": false,
+      "multicast-fast-leave": false,
+      "multicast-router-port": false,
+      "multicast-flood-unknown": false,
+      "bridge-group": 0,
+      "default-vid": 0,
+      "media": [
+        {
+          "type": "tp",
+          "mdix": "auto",
+          "autoneg": true,
+          "speed-duplex": [],
+          "fastlink": "disabled"
+        }
+      ],
+      "priority-mode": "tag",
+      "priority": 0,
+      "lldp": {
+        "enabled": false,
+        "direction": "rx-and-tx"
+      }
+    },
+    {
+      "id": "eth6",
+      "enabled": false,
+      "description": "unused",
+      "learning": false,
+      "multicast-fast-leave": false,
+      "multicast-router-port": false,
+      "multicast-flood-unknown": false,
+      "bridge-group": 0,
+      "default-vid": 0,
+      "media": [
+        {
+          "type": "tp",
+          "mdix": "auto",
+          "autoneg": true,
+          "speed-duplex": [],
+          "fastlink": "disabled"
+        }
+      ],
+      "priority-mode": "tag",
+      "priority": 0,
+      "lldp": {
+        "enabled": false,
+        "direction": "rx-and-tx"
+      }
+    },
+    {
+      "id": "eth7",
+      "enabled": false,
+      "description": "unused",
+      "learning": false,
+      "multicast-fast-leave": false,
+      "multicast-router-port": false,
+      "multicast-flood-unknown": false,
+      "bridge-group": 0,
+      "default-vid": 0,
+      "media": [
+        {
+          "type": "tp",
+          "mdix": "auto",
+          "autoneg": true,
+          "speed-duplex": [],
+          "fastlink": "disabled"
+        }
+      ],
+      "priority-mode": "tag",
+      "priority": 0,
+      "lldp": {
+        "enabled": false,
+        "direction": "rx-and-tx"
+      }
+    },
+    {
+      "id": "eth8",
+      "enabled": false,
+      "description": "unused",
+      "learning": false,
+      "multicast-fast-leave": false,
+      "multicast-router-port": false,
+      "multicast-flood-unknown": false,
+      "bridge-group": 0,
+      "default-vid": 0,
+      "media": [
+        {
+          "type": "tp",
+          "mdix": "auto",
+          "autoneg": true,
+          "speed-duplex": [],
+          "fastlink": "disabled"
+        }
+      ],
+      "priority-mode": "tag",
+      "priority": 0,
+      "lldp": {
+        "enabled": false,
+        "direction": "rx-and-tx"
+      }
+    },
+    {
+      "id": "eth9",
+      "enabled": false,
+      "description": "unused",
+      "learning": false,
+      "multicast-fast-leave": false,
+      "multicast-router-port": false,
+      "multicast-flood-unknown": false,
+      "bridge-group": 0,
+      "default-vid": 0,
+      "media": [
+        {
+          "type": "tp",
+          "mdix": "auto",
+          "autoneg": true,
+          "speed-duplex": [],
+          "fastlink": "disabled"
+        }
+      ],
+      "priority-mode": "tag",
+      "priority": 0,
+      "lldp": {
+        "enabled": false,
+        "direction": "rx-and-tx"
+      }
+    },
+    {
+      "id": "eth10",
+      "enabled": false,
+      "description": "unused",
+      "learning": false,
+      "multicast-fast-leave": false,
+      "multicast-router-port": false,
+      "multicast-flood-unknown": false,
+      "bridge-group": 0,
+      "default-vid": 0,
+      "media": [
+        {
+          "type": "tp",
+          "mdix": "auto",
+          "autoneg": true,
+          "speed-duplex": [],
+          "fastlink": "disabled"
+        }
+      ],
+      "priority-mode": "tag",
+      "priority": 0,
+      "lldp": {
+        "enabled": false,
+        "direction": "rx-and-tx"
+      }
+    }
+  ],
+  "port-access": [],
+  "bridge": [
+    {
+      "id": "br0",
+      "aging-time": 300,
+      "multicast": {
+        "snooping": false,
+        "querier": false,
+        "proxy-query": false,
+        "querier-robustness": 2,
+        "querier-interval": 125,
+        "router-ports": [],
+        "router-timeout": 0,
+        "fast-leave-ports": [],
+        "flood-unknown-ports": [
+          "eth1",
+          "eth2",
+          "eth3",
+          "eth4"
+        ]
+      },
+      "vlan": [
+        {
+          "vid": 1,
+          "id": "vlan1",
+          "enable": true,
+          "tagged": [],
+          "untagged": [
+            "eth1",
+            "eth2",
+            "eth3",
+            "eth4"
+          ],
+          "multicast-snooping": false,
+          "nest": [],
+          "priority": 0
+        }
+      ],
+      "flooding": {
+        "unicast": true,
+        "multicast": true
+      }
+    }
+  ],
+  "iface": [
+    {
+      "id": "lo",
+      "enabled": true,
+      "always": false,
+      "distance": 16,
+      "trigger": -1,
+      "arp-accept": true,
+      "arp-notify": true,
+      "icmp-redirect": false,
+      "proxy-arp": false,
+      "inet": [
+        {
+          "type": "static",
+          "address": "127.0.0.1/8"
+        }
+      ],
+      "inet6": []
+    },
+    {
+      "id": "vlan1",
+      "enabled": false,
+      "always": false,
+      "distance": 1,
+      "trigger": -1,
+      "arp-accept": false,
+      "arp-notify": false,
+      "icmp-redirect": false,
+      "proxy-arp": false,
+      "inet": [],
+      "inet6": []
+    }
+  ],
+  "ip": {
+    "ip-forward": false,
+    "multicast-forward": false,
+    "offload": false,
+    "firewall": {
+      "enable": false,
+      "input": {
+        "policy": "drop"
+      },
+      "forward": {
+        "policy": "drop"
+      },
+      "log": {
+        "enable": false,
+        "limit-entries": 0,
+        "limit-unit": "unlimited"
+      },
+      "alg-helper-ftp": false,
+      "alg-helper-tftp": false
+    }
+  },
+  "ipv6": {
+    "enabled": false,
+    "ip-forward": false
+  },
+  "logging": {
+    "secure-mode": true,
+    "console": false,
+    "usb": false
+  },
+  "alarm": {
+    "action": [],
+    "summary-trap": false
+  },
+  "lldp": {
+    "enabled": false,
+    "tx-hold-multiplier": 4,
+    "tx-interval": 30
+  },
+  "ntp": {
+    "enabled": false
+  },
+  "snmp-server": {
+    "enabled": false,
+    "ro-community": "",
+    "rw-community": "",
+    "trap-community": "",
+    "trap-host": [],
+    "commands": []
+  },
+  "ssh": {
+    "enabled": false,
+    "login-banner": "",
+    "port": 22,
+    "keepalive": 60,
+    "idle-timeout": 0,
+    "faildelay": 2
+  },
+  "cli": {
+    "cli-timeout": 300
+  },
+  "console": {
+    "console-login": 1,
+    "login-banner": ""
+  },
+  "mdns": {
+    "enabled": false
+  },
+  "ssdp": {
+    "enabled": false
+  },
+  "web": {
+    "session-timeout": 10,
+    "login-banner": "",
+    "http": {
+      "enabled": false,
+      "port": 80
+    },
+    "https": {
+      "enabled": false,
+      "port": 443
+    }
+  },
+  "watchdog": {
+    "enabled": true,
+    "interval": 20,
+    "timeout": 60,
+    "monitors": [
+      {
+        "id": "loadavg",
+        "enabled": true,
+        "interval": 3600,
+        "description": "",
+        "logmark": false,
+        "warning": 200
+      },
+      {
+        "id": "meminfo",
+        "enabled": true,
+        "interval": 3600,
+        "description": "",
+        "logmark": false,
+        "warning": 90
+      },
+      {
+        "id": "filenr",
+        "enabled": true,
+        "interval": 3600,
+        "description": "",
+        "logmark": false,
+        "warning": 90
+      }
+    ]
+  },
+  "ptp": {
+    "enabled": false,
+    "minor_version": 0,
+    "description": {
+      "name": "",
+      "location": ""
+    },
+    "profile": {
+      "type": "default",
+      "time_stamping": "onestep",
+      "delay_mechanism": "endtoend",
+      "transport": "layer2",
+      "domain": 0
+    },
+    "clock": {
+      "type": "transparent",
+      "client_only": false,
+      "priority1": 254,
+      "priority2": 128
+    }
+  }
+}
