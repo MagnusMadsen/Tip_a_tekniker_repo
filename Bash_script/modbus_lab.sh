@@ -49,6 +49,9 @@ BRIDGE_SNIFF_LOG="$RUN_DIR/bridge_tcpdump.log"
 CAPTURE_PCAP="$RUN_DIR/modbus_bridge_capture.pcap"
 STATE_JSON="$RUN_DIR/state.json"
 
+# Hvor længe vi venter på at masteren selv restore'r state ved stop
+MASTER_RESTORE_WAIT=6
+
 # =========================
 # Hjælpefunktioner
 # =========================
@@ -304,10 +307,16 @@ setup_master_net() {
 start_master() {
   echo "[INFO] Starter master i $NS_MASTER"
   : >"$MASTER_LOG"
-  ip netns exec "$NS_MASTER" nohup "$MASTER_PY" "$MASTER_SCRIPT" >"$MASTER_LOG" 2>&1 &
+
+  ip netns exec "$NS_MASTER" env MODBUS_STATE_JSON="$STATE_JSON" nohup "$MASTER_PY" "$MASTER_SCRIPT" >"$MASTER_LOG" 2>&1 &
   echo $! > "$MASTER_PIDFILE"
   sleep 1
   echo "[OK] Master startet. Log: $MASTER_LOG"
+
+  if [ ! -f "$STATE_JSON" ]; then
+    echo "[WARN] $STATE_JSON findes ikke endnu"
+    echo "[WARN] Masteren kan derfor ikke restore ved stop"
+  fi
 }
 
 start_mb1_sniffer() {
@@ -333,10 +342,14 @@ stop_slave() {
 
 stop_master() {
   if [ -f "$MASTER_PIDFILE" ]; then
+    echo "[INFO] Sender pæn stop til master, så den kan restore state"
     kill "$(cat "$MASTER_PIDFILE")" 2>/dev/null || true
+    sleep "$MASTER_RESTORE_WAIT"
     rm -f "$MASTER_PIDFILE"
     echo "[INFO] Master stoppet via pidfile"
   fi
+
+  # Fallback hvis den stadig hænger
   pkill -f "$MASTER_SCRIPT" 2>/dev/null || true
 }
 
@@ -383,7 +396,7 @@ logs() {
   tail -n 50 "$SLAVE_LOG" 2>/dev/null || true
   echo
   echo "=== master log ==="
-  tail -n 50 "$MASTER_LOG" 2>/dev/null || true
+  tail -n 80 "$MASTER_LOG" 2>/dev/null || true
   echo
   echo "=== bridge tcpdump log ==="
   tail -n 30 "$BRIDGE_SNIFF_LOG" 2>/dev/null || true
